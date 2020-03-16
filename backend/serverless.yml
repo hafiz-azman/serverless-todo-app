@@ -12,6 +12,10 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
+  environment:
+    AUTH_0_JSON_WEB_KEY_SET: https://dev-xuzc2hid.auth0.com/.well-known/jwks.json
+    AUTH_0_SECRET: JYx5hm-rDgszXLyfUv4T7diPT4Nl4e6o6A0h_eT_kP-bk8ahSfuaxlduJ90TNBzR
+
 functions:
 
   Auth:
