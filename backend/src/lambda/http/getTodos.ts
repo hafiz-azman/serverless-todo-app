@@ -6,8 +6,10 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } f
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const
-    token = event.Authorization,
+    token = event.headers.Authorization,
     decodedToken = decode(token)
+
+  console.log(decodedToken)
 
   return {
     statusCode: 201,
