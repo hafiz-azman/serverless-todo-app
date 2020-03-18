@@ -4,6 +4,8 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-reqvalidator-plugin
+  - serverless-aws-documentation
 
 provider:
   name: aws
@@ -15,28 +17,53 @@ provider:
   environment:
     AUTH_0_JSON_WEB_KEY_SET: https://dev-xuzc2hid.auth0.com/.well-known/jwks.json
     AUTH_0_SECRET: JYx5hm-rDgszXLyfUv4T7diPT4Nl4e6o6A0h_eT_kP-bk8ahSfuaxlduJ90TNBzR
+    TODOS_TABLE: hafiz-ToDos-${self:provider.stage}
+    TODOS_ATTACHMENTS_S3_BUCKET: hafiz-ToDos-attachments-${self:provider.stage}
+    SIGNED_URL_EXPIRATION: 300
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+
+custom:
+  documentation:
+    api:
+      info:
+        version: v1.0.0
+        title: Hafiz ToDos API
+        description: Simple serverless application for ToDo items
+      models:
+        - name: CreateTodo
+          contentType: application/json
+          schema: ${file(models/create-todo-request.json)}
 
 functions:
-
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
-
-  # TODO: Configure this function
   GetTodos:
     handler: src/lambda/http/getTodos.handler
     events:
       - http:
           method: get
           path: todos
-
-  # TODO: Configure this function
-  # CreateTodo:
-  #   handler: src/lambda/http/createTodo.handler
-  #   events:
-  #     - http:
-  #         method: post
-  #         path: todos
-
+          cors: true
+  CreateTodo:
+    handler: src/lambda/http/createTodo.handler
+    events:
+      - http:
+          method: post
+          path: todos
+          cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Create a new ToDo
+            description: Create a new ToDo
+            requestModels:
+              'application/json': CreateTodo
   # TODO: Configure this function
   # UpdateTodo:
   #   handler: src/lambda/http/updateTodo.handler
@@ -44,23 +71,81 @@ functions:
   #     - http:
   #         method: patch
   #         path: todos/{todoId}
-
-  # TODO: Configure this function
-  # DeleteTodo:
-  #   handler: src/lambda/http/deleteTodo.handler
-  #   events:
-  #     - http:
-  #         method: delete
-  #         path: todos/{todoId}
-
-  # TODO: Configure this function
-  # GenerateUploadUrl:
-  #   handler: src/lambda/http/generateUploadUrl.handler
-  #   events:
-  #     - http:
-  #         method: post
-  #         path: todos/{todoId}/attachment
+  DeleteTodo:
+    handler: src/lambda/http/deleteTodo.handler
+    events:
+      - http:
+          method: delete
+          path: todos/{todoId}
+  GenerateUploadUrl:
+    handler: src/lambda/http/generateUploadUrl.handler
+    events:
+      - http:
+          method: post
+          path: todos/{todoId}/attachment
 
 resources:
   Resources:
-    # TODO: Add any necessary AWS resources
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'request-body-validator'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+    TodosS3AttachmentsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.TODOS_ATTACHMENTS_S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action: 's3:GetObject'
+              Resource: 'arn:aws:s3:::${self:provider.environment.TODOS_ATTACHMENTS_S3_BUCKET}/*'
+        Bucket: !Ref TodosS3AttachmentsBucket
+    ToDosDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        - AttributeName: id
+          KeyType: S
+        - AttributeName: userId
+          KeyType: S
+        - AttributeName: createdAt
+          KeyType: S
+        - AttributeName: name
+          KeyType: S
+        - AttributeName: dueDate
+          KeyType: S
+        - AttributeName: done
+          KeyType: BOOL
+        - AttributeName: attachmentUrl
+          KeyType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      TableName: ${self:provider.environment.TODOS_TABLE}
