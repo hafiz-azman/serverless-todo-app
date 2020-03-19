@@ -6,6 +6,9 @@ import * as uuid from 'uuid'
 const responseHeader = { 'Access-Control-Allow-Origin': '*' }
 
 import { getUserId } from '../utils'
+import { createLogger } from '../../utils/logger'
+
+const createTodoLogger = createLogger('createTodo')
 
 const docClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
@@ -13,15 +16,23 @@ const todosTable = process.env.TODOS_TABLE
 import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  console.log('Processing event: ', event)
+  createTodoLogger.info('Processing event', { event })
 
   const todoId = uuid.v4()
   const newTodo: CreateTodoRequest = JSON.parse(event.body)
 
-  let userId, newItem
+  let newItem
 
   try {
-    userId = getUserId(event)
+    const userId = getUserId(event)
+
+    if (!userId) {
+      const message = 'Unable to get userId'
+
+      createTodoLogger.error(message)
+
+      throw message
+    }
 
     newItem = {
       id: todoId,
@@ -34,6 +45,12 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
       Item: newItem
     }).promise()
   } catch (error) {
+    createTodoLogger.error('Error while trying to put todo', {
+      error,
+      tableName: todosTable,
+      item: newItem
+     })
+
     return {
       statusCode: 500,
       headers: responseHeader,

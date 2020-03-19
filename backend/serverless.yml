@@ -27,6 +27,8 @@ provider:
         - dynamodb:Query
         - dynamodb:GetItem
         - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
       Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
 custom:
@@ -40,6 +42,9 @@ custom:
         - name: CreateTodo
           contentType: application/json
           schema: ${file(models/create-todo-request.json)}
+        - name: UpdateTodo
+          contentType: application/json
+          schema: ${file(models/update-todo-request.json)}
 
 functions:
   Auth:
@@ -51,6 +56,7 @@ functions:
           method: get
           path: todos
           cors: true
+          authorizer: Auth
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
@@ -58,31 +64,43 @@ functions:
           method: post
           path: todos
           cors: true
+          authorizer: Auth
           reqValidatorName: RequestBodyValidator
           documentation:
             summary: Create a new ToDo
             description: Create a new ToDo
             requestModels:
               'application/json': CreateTodo
-  # TODO: Configure this function
-  # UpdateTodo:
-  #   handler: src/lambda/http/updateTodo.handler
-  #   events:
-  #     - http:
-  #         method: patch
-  #         path: todos/{todoId}
+  UpdateTodo:
+    handler: src/lambda/http/updateTodo.handler
+    events:
+      - http:
+          method: patch
+          path: todos/{todoId}
+          cors: true
+          authorizer: Auth
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Update a ToDo
+            description: Update a ToDo
+            requestModels:
+              'application/json': UpdateTodo
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
       - http:
           method: delete
           path: todos/{todoId}
+          cors: true
+          authorizer: Auth
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
       - http:
           method: post
           path: todos/{todoId}/attachment
+          cors: true
+          authorizer: Auth
 
 resources:
   Resources:
