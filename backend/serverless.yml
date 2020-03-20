@@ -18,7 +18,7 @@ provider:
     AUTH_0_JSON_WEB_KEY_SET: https://dev-xuzc2hid.auth0.com/.well-known/jwks.json
     AUTH_0_SECRET: JYx5hm-rDgszXLyfUv4T7diPT4Nl4e6o6A0h_eT_kP-bk8ahSfuaxlduJ90TNBzR
     TODOS_TABLE: hafiz-ToDos-${self:provider.stage}
-    TODOS_ATTACHMENTS_S3_BUCKET: hafiz-ToDos-attachments-${self:provider.stage}
+    TODOS_ATTACHMENTS_S3_BUCKET: hafiz-todos-attachments-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
 
 custom:
@@ -28,13 +28,13 @@ custom:
         version: v1.0.0
         title: Hafiz ToDos API
         description: Simple serverless application for ToDo items
-      models:
-        - name: CreateTodo
-          contentType: application/json
-          schema: ${file(models/create-todo-request.json)}
-        - name: UpdateTodo
-          contentType: application/json
-          schema: ${file(models/update-todo-request.json)}
+    models:
+      - name: CreateTodo
+        contentType: "application/json"
+        schema: ${file(models/create-todo-request.json)}
+      - name: UpdateTodo
+        contentType: "application/json"
+        schema: ${file(models/update-todo-request.json)}
 
 functions:
   Auth:
@@ -48,7 +48,7 @@ functions:
           cors: true
           authorizer: Auth
     iamRoleStatements:
-    - Effect: Allow
+      - Effect: Allow
         Action:
           - dynamodb:Query
           - dynamodb:GetItem
@@ -122,15 +122,15 @@ functions:
 resources:
   Resources:
     RequestBodyValidator:
-      Type: AWS::ApiGateway::RequestValidator
+      Type: "AWS::ApiGateway::RequestValidator"
       Properties:
         Name: 'request-body-validator'
         RestApiId:
           Ref: ApiGatewayRestApi
         ValidateRequestBody: true
         ValidateRequestParameters: false
-    TodosS3AttachmentsBucket:
-      Type: AWS::S3::Bucket
+    todos3attachmentsbucket:
+      Type: "AWS::S3::Bucket"
       Properties:
         BucketName: ${self:provider.environment.TODOS_ATTACHMENTS_S3_BUCKET}
         CorsConfiguration:
@@ -148,7 +148,7 @@ resources:
                 - HEAD
               MaxAge: 3000
     BucketPolicy:
-      Type: AWS::S3::BucketPolicy
+      Type: "AWS::S3::BucketPolicy"
       Properties:
         PolicyDocument:
           Id: MyPolicy
@@ -159,28 +159,19 @@ resources:
               Principal: '*'
               Action: 's3:GetObject'
               Resource: 'arn:aws:s3:::${self:provider.environment.TODOS_ATTACHMENTS_S3_BUCKET}/*'
-        Bucket: !Ref TodosS3AttachmentsBucket
+        Bucket: !Ref todos3attachmentsbucket
     ToDosDynamoDBTable:
-      Type: AWS::DynamoDB::Table
+      Type: "AWS::DynamoDB::Table"
       Properties:
-        - AttributeName: id
-          KeyType: S
-        - AttributeName: userId
-          KeyType: S
-        - AttributeName: createdAt
-          KeyType: S
-        - AttributeName: name
-          KeyType: S
-        - AttributeName: dueDate
-          KeyType: S
-        - AttributeName: done
-          KeyType: BOOL
-        - AttributeName: attachmentUrl
-          KeyType: S
-      KeySchema:
-        - AttributeName: userId
-          KeyType: HASH
-        - AttributeName: createdAt
-          KeyType: RANGE
-      BillingMode: PAY_PER_REQUEST
-      TableName: ${self:provider.environment.TODOS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: createdAt
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.TODOS_TABLE}
