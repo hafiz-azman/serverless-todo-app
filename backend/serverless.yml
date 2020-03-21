@@ -19,6 +19,7 @@ provider:
     AUTH_0_SECRET: JYx5hm-rDgszXLyfUv4T7diPT4Nl4e6o6A0h_eT_kP-bk8ahSfuaxlduJ90TNBzR
     TODOS_TABLE: hafiz-ToDos-${self:provider.stage}
     TODOS_ATTACHMENTS_S3_BUCKET: hafiz-todos-attachments-${self:provider.stage}
+    TODOS_ID_INDEX: TodosIdIndex
     SIGNED_URL_EXPIRATION: 300
 
 custom:
@@ -53,6 +54,10 @@ functions:
           - dynamodb:Query
           - dynamodb:GetItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_ID_INDEX}
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
@@ -91,6 +96,10 @@ functions:
         Action:
           - dynamodb:UpdateItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_ID_INDEX}
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
@@ -104,6 +113,10 @@ functions:
         Action:
           - dynamodb:DeleteItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_ID_INDEX}
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
@@ -121,6 +134,15 @@ functions:
 
 resources:
   Resources:
+    GatewayResponseDefault4XX:
+      Type: "AWS::ApiGateway::GatewayResponse"
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
     RequestBodyValidator:
       Type: "AWS::ApiGateway::RequestValidator"
       Properties:
@@ -166,6 +188,8 @@ resources:
         AttributeDefinitions:
           - AttributeName: userId
             AttributeType: S
+          - AttributeName: todoId
+            AttributeType: S
           - AttributeName: createdAt
             AttributeType: S
         KeySchema:
@@ -173,5 +197,14 @@ resources:
             KeyType: HASH
           - AttributeName: createdAt
             KeyType: RANGE
+        LocalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.TODOS_ID_INDEX}
+            KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: todoId
+              KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODOS_TABLE}

@@ -3,7 +3,10 @@ import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } f
 import * as AWS from 'aws-sdk'
 import * as uuid from 'uuid'
 
-const responseHeader = { 'Access-Control-Allow-Origin': '*' }
+const responseHeader = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Credentials': true
+}
 
 import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
@@ -19,6 +22,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   createTodoLogger.info('Processing event', { event })
 
   const todoId = uuid.v4()
+  const createdAt = (new Date()).toISOString()
   const newTodo: CreateTodoRequest = JSON.parse(event.body)
 
   let newItem
@@ -35,8 +39,9 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     }
 
     newItem = {
-      id: todoId,
+      todoId,
       userId,
+      createdAt,
       ...newTodo
     }
 
@@ -61,6 +66,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   return {
     statusCode: 201,
     headers: responseHeader,
-    body: JSON.stringify({ newItem })
+    body: JSON.stringify({ item: newItem })
   }
 }

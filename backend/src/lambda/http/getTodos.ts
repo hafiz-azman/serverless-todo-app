@@ -11,6 +11,7 @@ const getTodosLogger = createLogger('getTodo')
 
 const docClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
+const todosIdIndex = process.env.TODOS_ID_INDEX
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   getTodosLogger.info('Processing event', { event })
@@ -30,6 +31,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
     todos = await docClient.query({
       TableName: todosTable,
+      IndexName: todosIdIndex,
       KeyConditionExpression: 'userId=:userId',
       ExpressionAttributeValues: { ':userId': userId },
       ScanIndexForward: false
@@ -51,6 +53,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   return {
     statusCode: 200,
     headers: responseHeader,
-    body: JSON.stringify(todos)
+    body: JSON.stringify({ items: todos && todos.Items ? todos.Items :  [] })
   }
 }

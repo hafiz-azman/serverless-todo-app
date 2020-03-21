@@ -10,11 +10,8 @@
     "attachmentUrl": { "type": "string" }
   },
   "required": [
-    "createdAt",
     "name",
-    "dueDate",
-    "done",
-    "attachmentUrl"
+    "dueDate"
   ],
   "additionalProperties": false
 }
