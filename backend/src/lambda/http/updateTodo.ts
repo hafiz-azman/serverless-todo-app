@@ -1,6 +1,9 @@
 import 'source-map-support/register'
 import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 import * as AWS from 'aws-sdk'
+import * as AWSXRay from 'aws-xray-sdk'
+
+AWSXRay.captureAWS(AWS)
 
 const responseHeader = { 'Access-Control-Allow-Origin': '*' }
 
