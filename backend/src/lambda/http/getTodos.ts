@@ -1,48 +1,27 @@
 import 'source-map-support/register'
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
-import * as AWS from 'aws-sdk'
-import * as AWSXRay from 'aws-xray-sdk'
-
-AWSXRay.captureAWS(AWS)
 
 const responseHeader = { 'Access-Control-Allow-Origin': '*' }
 
 import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 
-const getTodosLogger = createLogger('getTodo')
+import { getAllTodos } from '../../businessLogic/todos'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
-const todosIdIndex = process.env.TODOS_ID_INDEX
+const getTodosLambdaLogger = createLogger('getTodo')
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  getTodosLogger.info('Processing event', { event })
+  getTodosLambdaLogger.info('Processing event', { event })
 
   let userId, todos
 
   try {
     const userId = getUserId(event)
 
-    if (!userId) {
-      const message = 'Unable to get userId'
-
-      getTodosLogger.error(message)
-
-      throw message
-    }
-
-    todos = await docClient.query({
-      TableName: todosTable,
-      IndexName: todosIdIndex,
-      KeyConditionExpression: 'userId=:userId',
-      ExpressionAttributeValues: { ':userId': userId },
-      ScanIndexForward: false
-    }).promise()
+    todos = await getAllTodos(userId)
   } catch (error) {
-    getTodosLogger.error('Error while trying to get todos', {
+    getTodosLambdaLogger.error('Error while trying to get todos', {
       error,
-      tableName: todosTable,
       userId
     })
 
@@ -56,6 +35,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   return {
     statusCode: 200,
     headers: responseHeader,
-    body: JSON.stringify({ items: todos && todos.Items ? todos.Items :  [] })
+    body: JSON.stringify({ items: todos })
   }
 }
