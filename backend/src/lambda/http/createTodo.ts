@@ -15,6 +15,8 @@ const createTodoLogger = createLogger('createTodo')
 
 const docClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
+const todosS3AttachmentBucket = process.env.TODOS_ATTACHMENTS_S3_BUCKET
+const awsRegion = process.env.REGION
 
 import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
 
@@ -42,6 +44,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
       todoId,
       userId,
       createdAt,
+      attachmentUrl: `https://${ todosS3AttachmentBucket }.s3${ awsRegion ? `.${ awsRegion }` : '' }.amazonaws.com/${ todoId }`,
       ...newTodo
     }
 

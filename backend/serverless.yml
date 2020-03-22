@@ -21,7 +21,7 @@ provider:
     TODOS_ATTACHMENTS_S3_BUCKET: hafiz-todos-attachments-${self:provider.stage}
     TODOS_ID_INDEX: TodosIdIndex
     SIGNED_URL_EXPIRATION: 300
-
+    REGION: ${self:provider.region}
 custom:
   documentation:
     api:

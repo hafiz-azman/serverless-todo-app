@@ -62,11 +62,12 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
         userId,
         createdAt
       },
-      UpdateExpression: 'set name=:name, dueDate=:dueDate, done=:done',
+      UpdateExpression: 'set #todoName=:todoName, dueDate=:dueDate, done=:done',
+      ExpressionAttributeNames: { '#todoName': 'name' },
       ExpressionAttributeValues: {
-        ':name': name,
+        ':todoName': name,
         ':dueDate': dueDate,
-        ':done': done,
+        ':done': done
       }
     }).promise()
   } catch (error) {
