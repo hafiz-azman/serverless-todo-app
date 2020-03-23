@@ -20,7 +20,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   let todoItem, userId
 
   try {
-    userId = getUserId(event)\
+    userId = getUserId(event)
     todoItem = await createTodo(userId, newTodo)
   } catch (error) {
     createTodoLambdaLogger.error('Error while trying to put todo', {

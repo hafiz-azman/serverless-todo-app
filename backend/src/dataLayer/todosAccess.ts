@@ -16,9 +16,15 @@ const
 
 export class TodosAccess {
   constructor(
+    // dynamodb
     private readonly docClient: DocumentClient = new XAWS.DynamoDB.DocumentClient(),
     private readonly todosTable = process.env.TODOS_TABLE,
-    private readonly todosIdIndex = process.env.TODOS_ID_INDEX
+    private readonly todosIdIndex = process.env.TODOS_ID_INDEX,
+
+    // s3
+    private readonly s3 = new XAWS.S3({ signatureVersion: 'v4' }),
+    private readonly bucketName = process.env.TODOS_ATTACHMENTS_S3_BUCKET,
+    private readonly urlExpiration = process.env.SIGNED_URL_EXPIRATION
   ) {
     todosAccessLogger.info('constructing TodosAccess class', {
       todosTable,
@@ -26,10 +32,12 @@ export class TodosAccess {
     })
   }
 
+  // dynamo db accesses
+
   async createTodo(todoItem: TodoItem): Promise<void> {
     todosAccessLogger.info('creating new todo', { todoItem })
 
-    this.docClient.put({
+    await this.docClient.put({
       TableName: this.todosTable,
       Item: todoItem
     }).promise()
@@ -127,5 +135,21 @@ export class TodosAccess {
         createdAt
       }
     }).promise()
+  }
+
+  // s3 bucket accesses
+
+  getTodoAttachmentUploadSignedUrl(todoId: string): string {
+    todosAccessLogger.info('getting todo attachment upload signed url', { todoId })
+
+    const uploadUrl = this.s3.getSignedUrl('putObject', {
+      Bucket: this.bucketName,
+      Key: todoId,
+      Expires: this.urlExpiration
+    })
+
+    todosAccessLogger.info('getting todo attachment upload signed url uploadUrl', { uploadUrl })
+
+    return uploadUrl
   }
 }

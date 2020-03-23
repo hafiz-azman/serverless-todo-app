@@ -19,7 +19,7 @@ const
   todosBusinessLogicLogger = createLogger('todos businessLogic')
 
 export async function createTodo(userId, newTodo: CreateTodoRequest): Promise<TodoItem> {
-  todosBusinessLogicLogger('create todo businessLogic', {
+  todosBusinessLogicLogger.info('create todo businessLogic', {
     userId,
     newTodo
   })
@@ -36,7 +36,7 @@ export async function createTodo(userId, newTodo: CreateTodoRequest): Promise<To
       ...newTodo
     }
 
-  todosBusinessLogicLogger('create todo businessLogic item', { todoItem })
+  todosBusinessLogicLogger.info('create todo businessLogic item', { todoItem })
 
   await todosAccess.createTodo(todoItem)
 
@@ -44,17 +44,17 @@ export async function createTodo(userId, newTodo: CreateTodoRequest): Promise<To
 }
 
 export async function getAllTodos(userId: string): Promise<TodoItem[]> {
-  todosBusinessLogicLogger('get all todos businessLogic', { userId })
+  todosBusinessLogicLogger.info('get all todos businessLogic', { userId })
 
   const items = await todosAccess.getAllTodos(userId)
 
-  todosBusinessLogicLogger('get all todos businessLogic items', { items })
+  todosBusinessLogicLogger.info('get all todos businessLogic items', { items })
 
   return items
 }
 
 export async function updateTodo(userId: string, todoId: string, updatedTodo: UpdateTodoRequest): Promise<void> {
-  todosBusinessLogicLogger('update todo businessLogic', {
+  todosBusinessLogicLogger.info('update todo businessLogic', {
     userId,
     todoId,
     updatedTodo
@@ -63,7 +63,7 @@ export async function updateTodo(userId: string, todoId: string, updatedTodo: Up
   // query to get the todo to delete, to get it's range key
   const result = await todosAccess.getTodo(userId, todoId)
 
-  todosBusinessLogicLogger('update todo businessLogic item', { result })
+  todosBusinessLogicLogger.info('update todo businessLogic item', { result })
 
   if (!result) {
     throw {
@@ -89,7 +89,7 @@ export async function updateTodo(userId: string, todoId: string, updatedTodo: Up
 }
 
 export async function deleteTodo(userId: string, todoId: string): Promise<void> {
-  todosBusinessLogicLogger('delete todo businessLogic', {
+  todosBusinessLogicLogger.info('delete todo businessLogic', {
     userId,
     todoId
   })
@@ -97,7 +97,7 @@ export async function deleteTodo(userId: string, todoId: string): Promise<void> 
   // query to get the todo to delete, to get it's range key
   const result = await todosAccess.getTodo(userId, todoId)
 
-  todosBusinessLogicLogger('delete todo businessLogic item', { result })
+  todosBusinessLogicLogger.info('delete todo businessLogic item', { result })
 
   if (!result) {
     throw {
@@ -109,4 +109,14 @@ export async function deleteTodo(userId: string, todoId: string): Promise<void> 
   const { createdAt } = result
 
   await todosAccess.deleteTodo(userId, createdAt)
+}
+
+export function generateTodoUploadUrl(todoId: string) {
+  todosBusinessLogicLogger.info('generate todo upload url businessLogic', { todoId })
+
+  const uploadUrl = todosAccess.getTodoAttachmentUploadSignedUrl(todoId)
+
+  todosBusinessLogicLogger.info('generate todo upload url businessLogic uploadUrl', { uploadUrl })
+
+  return uploadUrl
 }
