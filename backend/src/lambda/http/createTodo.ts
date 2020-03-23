@@ -1,63 +1,36 @@
 import 'source-map-support/register'
 import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
-import * as AWS from 'aws-sdk'
-import * as uuid from 'uuid'
 
-const responseHeader = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Credentials': true
-}
+const responseHeader = { 'Access-Control-Allow-Origin': '*' }
+
+import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
 
 import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 
-const createTodoLogger = createLogger('createTodo')
+import { createTodo } from '../../businessLogic/todos'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
-
-import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
+const createTodoLambdaLogger = createLogger('createTodoLambda')
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  createTodoLogger.info('Processing event', { event })
+  createTodoLambdaLogger.info('Processing event', { event })
 
-  const todoId = uuid.v4()
-  const createdAt = (new Date()).toISOString()
   const newTodo: CreateTodoRequest = JSON.parse(event.body)
 
-  let newItem
+  let todoItem, userId
 
   try {
-    const userId = getUserId(event)
-
-    if (!userId) {
-      const message = 'Unable to get userId'
-
-      createTodoLogger.error(message)
-
-      throw message
-    }
-
-    newItem = {
-      todoId,
-      userId,
-      createdAt,
-      ...newTodo
-    }
-
-    await docClient.put({
-      TableName: todosTable,
-      Item: newItem
-    }).promise()
+    userId = getUserId(event)
+    todoItem = await createTodo(userId, newTodo)
   } catch (error) {
-    createTodoLogger.error('Error while trying to put todo', {
+    createTodoLambdaLogger.error('Error while trying to put todo', {
       error,
-      tableName: todosTable,
-      item: newItem
-     })
+      userId,
+      newTodo
+    })
 
     return {
-      statusCode: 500,
+      statusCode: error.statusCode || 500,
       headers: responseHeader,
       body: JSON.stringify({ error })
     }
@@ -66,6 +39,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   return {
     statusCode: 201,
     headers: responseHeader,
-    body: JSON.stringify({ item: newItem })
+    body: JSON.stringify({ item: todoItem })
   }
 }

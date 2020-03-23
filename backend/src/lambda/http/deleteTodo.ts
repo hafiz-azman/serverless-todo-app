@@ -1,27 +1,24 @@
 import 'source-map-support/register'
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
-import * as AWS from 'aws-sdk'
 
 const responseHeader = { 'Access-Control-Allow-Origin': '*' }
 
 import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 
-const deleteTodoLogger = createLogger('deleteTodo')
+import { deleteTodo } from '../../businessLogic/todos'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
-const todosIdIndex = process.env.TODOS_ID_INDEX
+const deleteTodoLambdaLogger = createLogger('deleteTodo')
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  deleteTodoLogger.info('Processing event', { event })
+  deleteTodoLambdaLogger.info('Processing event', { event })
 
   const todoId = event.pathParameters.todoId
 
   if (!todoId) {
     const message = 'Missing todoId'
 
-    deleteTodoLogger.error(message)
+    deleteTodoLambdaLogger.error(message)
 
     return {
       statusCode: 400,
@@ -30,50 +27,16 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     }
   }
 
+  let userId
+
   try {
-    const userId = getUserId(event)
+    userId = getUserId(event)
 
-    if (!userId) {
-      const message = 'Unable to get userId'
-
-      deleteTodoLogger.error(message)
-
-      throw message
-    }
-
-    // query to get the todo to delete, to get it's range key
-    const todos = await docClient.query({
-      TableName: todosTable,
-      IndexName: todosIdIndex,
-      KeyConditionExpression: 'todoId=:todoId AND userId=:userId',
-      ExpressionAttributeValues: {
-        ':todoId': todoId,
-        ':userId': userId
-      },
-      ScanIndexForward: false
-    }).promise()
-
-    if (!todos || (todos.Items && todos.Items.length <= 0)) {
-      throw {
-        statusCode: 404,
-        message: 'No records found'
-      }
-    }
-
-    const todo = todos.Items[0]
-    const { createdAt } = todo
-
-    await docClient.delete({
-      TableName: todosTable,
-      Key: {
-        userId,
-        createdAt
-      }
-    }).promise()
+    await deleteTodo(userId, todoId)
   } catch (error) {
-    deleteTodoLogger.info('Error while trying to delete todo', {
+    deleteTodoLambdaLogger.info('Error while trying to delete todo', {
       error,
-      tableName: todosTable,
+      userId,
       todoId
      })
 
